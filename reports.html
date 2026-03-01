@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Activity Reports | Nishtar Hospital HRMS{% endblock %}
+
+{% block breadcrumb %}
+Staff Management / <span class="highlight">Global Reports</span>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h3 style="font-size: 18px; font-weight: 600;"><i class='bx bxs-report' style="color: var(--primary);"></i>
+                Letter & Action Generations</h3>
+            <p class="subtitle">Complete audit log of all automated documents issued by the system.</p>
+        </div>
+        <button class="btn-primary" style="background: var(--success);"><i class='bx bxs-file-export'></i> Export
+            CSV</button>
+    </div>
+
+    <div class="table-responsive" style="margin-top: 20px;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date & Time</th>
+                    <th>Document Type</th>
+                    <th>Employee Targeted</th>
+                    <th>BPS Status</th>
+                    <th>Generated Narrative</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td style="white-space: nowrap; font-size: 13px;">{{ log.generated_on.strftime('%d %b %Y, %I:%M %p')
+                        }}</td>
+                    <td>
+                        <div
+                            style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; color: {% if 'Warning' in log.document_type or 'Show Cause' in log.document_type %}#d97706{% elif 'NOC' in log.document_type %}#15803d{% else %}var(--primary){% endif %};">
+                            <i class='bx {{ "bx-message-alt-error" if "Warning" in log.document_type or "Show Cause" in log.document_type else "bx-check-shield" if "NOC" in log.document_type else "bx-notepad" }}'
+                                style="font-size: 16px;"></i>
+                            {{ log.document_type }}
+                        </div>
+                    </td>
+                    <td><a href="{{ url_for('view_employee_profile', employee_id=log.employee.id) }}"
+                            style="color: var(--text-main); font-weight: 500;">{{ log.employee.name }}</a></td>
+                    <td>BPS-{{ '%02d' % log.employee.bps }}</td>
+                    <td style="color: var(--text-muted); font-size: 13px; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                        title="{{ log.document_content }}">
+                        {{ log.document_content }}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 30px; color: var(--text-muted);">No documents
+                        generated yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

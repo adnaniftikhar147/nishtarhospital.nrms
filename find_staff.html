@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+
+{% block title %}Find Staff | Nishtar Hospital HRMS{% endblock %}
+
+{% block breadcrumb %}
+Staff Management / <span class="highlight">Find Staff Directory</span>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 18px; font-weight: 600;"><i class='bx bx-group' style="color: var(--primary);"></i>
+            Employee Directory (BS-01 to BS-04)</h3>
+
+        <div class="search-bar" style="width: 300px; position: static;">
+            <input type="text" id="directorySearch" placeholder="Search Directory..."
+                style="width: 100%; border-radius: 8px;">
+        </div>
+    </div>
+
+    <div class="table-responsive" style="margin-top: 20px;">
+        <table class="data-table" id="staffTable">
+            <thead>
+                <tr>
+                    <th>File No / ID</th>
+                    <th>Name</th>
+                    <th>Designation & BPS</th>
+                    <th>CNIC</th>
+                    <th>Mobile No</th>
+                    <th>Ward / Department</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in employees %}
+                <tr>
+                    <td style="font-weight: 600; color: var(--primary);">{{ emp.file_no }}</td>
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <img src="{% if emp.profile_picture and emp.profile_picture != 'default-avatar.png' %}{{ url_for('static', filename='uploads/' + emp.profile_picture) }}{% else %}https://ui-avatars.com/api/?name={{ emp.name|urlencode }}&background=e0f2fe&color=0369a1&size=30{% endif %}"
+                                style="border-radius: 50%; width: 30px; height: 30px; object-fit: cover;">
+                            <span style="font-weight: 500;">{{ emp.name }}</span>
+                        </div>
+                    </td>
+                    <td>{{ emp.designation }} <span
+                            style="font-size: 12px; color: var(--text-muted); background: var(--bg-main); padding: 2px 6px; border-radius: 4px;">BPS-{{
+                            '%02d' % emp.bps }}</span></td>
+                    <td>{{ emp.cnic }}</td>
+                    <td>{{ emp.mobile_no }}</td>
+                    <td>
+                        <select onchange="updateDirDepartment({{ emp.id }}, this)"
+                            style="background: var(--bg-main); border: 1px solid var(--border-color); color: var(--text-main); fill: var(--primary); font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: 4px; padding: 4px 6px; outline: none;">
+                            <option value="" disabled {% if not emp.department %}selected{% endif %}>Select Ward
+                            </option>
+                            {% for dept in global_departments %}
+                            <option value="{{ dept.name }}" {% if emp.department==dept.name %}selected{% endif %}>{{
+                                dept.name }}</option>
+                            {% endfor %}
+                            <option value="ADD_NEW" style="font-weight: 700; color: var(--primary);">+ Add New</option>
+                        </select>
+                    </td>
+                    <td>
+                        {% if emp.regularization_date %}
+                        <span
+                            style="background: var(--success-light); color: var(--success); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase;">Regular</span>
+                        {% else %}
+                        <span
+                            style="background: var(--warning-light); color: var(--warning); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase;">Contract</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('view_employee_profile', employee_id=emp.id) }}"
+                            style="display: inline-block; padding: 6px 12px; background: var(--primary); color: white; text-decoration: none; border-radius: 6px; font-size: 12px; font-weight: 600;">Open
+                            File</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 30px; color: var(--text-muted);">No employees
+                        found in the directory.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Client-side quick filter for the directory
+    document.getElementById('directorySearch').addEventListener('keyup', function () {
+        let filter = this.value.toLowerCase();
+        let rows = document.querySelectorAll('#staffTable tbody tr');
+
+        rows.forEach(row => {
+            let text = row.innerText.toLowerCase();
+            if (text.includes(filter)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    async function updateDirDepartment(employeeId, selectElt) {
+        let newDepartment = selectElt.value;
+        const originalValue = selectElt.getAttribute('data-original') || [...selectElt.options].find(o => o.selected && o.value !== 'ADD_NEW')?.value || '';
+
+        if (newDepartment === 'ADD_NEW') {
+            const { value: newDept } = await Swal.fire({
+                title: 'Add New Ward / Department',
+                input: 'text',
+                inputPlaceholder: 'e.g., Cardiology Ward',
+                showCancelButton: true
+            });
+
+            if (newDept && newDept.trim()) {
+                Swal.fire({ title: 'Saving...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                try {
+                    const response = await fetch('/api/departments', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: newDept.trim() })
+                    });
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        const opt = document.createElement('option');
+                        opt.value = result.name;
+                        opt.text = result.name;
+                        selectElt.add(opt, selectElt.options[selectElt.options.length - 1]);
+                        selectElt.value = result.name;
+                        newDepartment = result.name;
+                    } else {
+                        Swal.fire('Error', result.error, 'error');
+                        selectElt.value = originalValue;
+                        return;
+                    }
+                } catch (e) {
+                    Swal.fire('Error', 'Failed to add department.', 'error');
+                    selectElt.value = originalValue;
+                    return;
+                }
+            } else {
+                selectElt.value = originalValue;
+                return;
+            }
+        }
+
+        // Save the department via API
+        Swal.fire({ title: 'Updating...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        try {
+            const response = await fetch(`/api/employees/${employeeId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ department: newDepartment })
+            });
+            const result = await response.json();
+            if (response.ok) {
+                Swal.fire('Success', 'Department updated successfully.', 'success');
+                selectElt.setAttribute('data-original', newDepartment);
+
+                // If they added a new department, we should ideally reload to update global_departments everywhere 
+                // but a soft update is okay for the active session.
+            } else {
+                Swal.fire('Error', result.error || 'Update failed', 'error');
+                selectElt.value = originalValue;
+            }
+        } catch (e) {
+            Swal.fire('Error', e.toString(), 'error');
+            selectElt.value = originalValue;
+        }
+    }
+</script>
+{% endblock %}

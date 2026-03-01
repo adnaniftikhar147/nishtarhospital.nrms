@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Ward / Department List{% endblock %}
+{% block breadcrumb %}Staff Management / <span class="highlight">Ward &amp; Department List</span>{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-top: 24px; padding: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h2 id="deptHeading" style="margin: 0; color: var(--text-main); font-size: 20px;">Employees by Ward / Department
+        </h2>
+
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <label for="deptSelect" style="font-weight: 600; color: var(--text-muted);">Select Department:</label>
+            <select id="deptSelect" onchange="fetchEmployeesByDepartment(this.value)"
+                style="padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-main); font-family: inherit; font-size: 14px; min-width: 250px; outline: none;">
+                <option value="" selected disabled>-- Select a Ward / Department --</option>
+                {% for dept in global_departments %}
+                <option value="{{ dept.name }}">{{ dept.name }}</option>
+                {% endfor %}
+            </select>
+            <button class="btn-primary print-hide" onclick="window.print()" style="margin-left: 10px;">
+                <i class='bx bx-printer'></i> Print
+            </button>
+        </div>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table class="data-table" id="deptTable">
+            <thead>
+                <tr>
+                    <th style="width: 80px; text-align: center;">Sr. No.</th>
+                    <th style="width: 150px;">File No.</th>
+                    <th>Employee Name &amp; Father Name</th>
+                    <th>Designation</th>
+                </tr>
+            </thead>
+            <tbody id="deptTableBody">
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                        <i class='bx bx-building'
+                            style="font-size: 48px; display: block; margin-bottom: 10px; opacity: 0.5;"></i>
+                        Please select a Ward / Department above to view its employees.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Signature Stamp Section -->
+    <div style="margin-top: 60px; display: flex; justify-content: flex-end; padding-right: 40px;">
+        <div style="text-align: center; width: 250px;">
+            <div style="border-bottom: 2px solid #000; margin-bottom: 8px;"></div>
+            <select id="signatureSelect" onchange="handleAddSignature(this)"
+                style="width: 100%; text-align: center; text-align-last: center; border: 1px solid var(--border); padding: 8px; border-radius: 5px; font-weight: 600; font-family: inherit; font-size: 14px; outline: none; background: var(--bg-main); cursor: pointer; margin-bottom: 5px;">
+                <option value="Medical Superintendent">Medical Superintendent</option>
+                <option value="Head of Department">Head of Department</option>
+                <option value="M.S / Head of Department">M.S / Head of Department</option>
+                <option value="HR Manager">HR Manager</option>
+                <option value="Admin Officer">Admin Officer</option>
+                <option value="Clerk">Clerk</option>
+                <option value="ADD_NEW" style="font-weight: 700; color: var(--primary);">+ Add New Authority</option>
+            </select>
+            <select id="hospitalSelect" onchange="handleAddHospital(this)"
+                style="width: 100%; text-align: center; text-align-last: center; border: 1px solid var(--border); padding: 6px; border-radius: 5px; font-weight: 600; font-family: inherit; font-size: 14px; outline: none; background: var(--bg-main); cursor: pointer; color: var(--text-main);">
+                <option value="Nishtar Hospital, Multan">Nishtar Hospital, Multan</option>
+                <option value="ADD_NEW" style="font-weight: 700; color: var(--primary);">+ Add New Hospital/Location
+                </option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function fetchEmployeesByDepartment(deptName) {
+        if (!deptName) return;
+
+        document.getElementById('deptHeading').innerText = `Employees in ${deptName}`;
+
+        const tbody = document.getElementById('deptTableBody');
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px;">Loading...</td></tr>`;
+
+        try {
+            const response = await fetch(`/api/employees/department?dept=${encodeURIComponent(deptName)}`);
+            const data = await response.json();
+
+            if (data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                            <i class='bx bx-info-circle' style="font-size: 32px; display: block; margin-bottom: 10px; opacity: 0.5;"></i>
+                            No employees found in this department.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = '';
+
+            data.forEach((emp, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="text-align: center; font-weight: 600;">${index + 1}</td>
+                    <td style="font-weight: 600; color: var(--primary);">
+                        <a href="/employee/${emp.id}" style="text-decoration: none; color: inherit;">${emp.file_no}</a>
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div>
+                                <span style="font-weight: 600; display: block;">${emp.name}</span>
+                                <span style="font-size: 12px; color: var(--text-muted);">S/O ${emp.father_name}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        ${emp.designation} 
+                        <span style="font-size: 11px; color: var(--text-muted); background: var(--bg-main); padding: 2px 6px; border-radius: 4px; margin-left: 6px;">BPS-${emp.bps.toString().padStart(2, '0')}</span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+        } catch (error) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--danger); padding: 20px;">Failed to load data. Please try again.</td></tr>`;
+            console.error("Error fetching department employees:", error);
+        }
+    }
+    async function handleAddSignature(selectElt) {
+        if (selectElt.value === 'ADD_NEW') {
+            const { value: newAuth } = await Swal.fire({
+                title: 'Add New Authority',
+                input: 'text',
+                inputPlaceholder: 'e.g., Senior Consultant',
+                showCancelButton: true
+            });
+
+            if (newAuth && newAuth.trim()) {
+                const opt = document.createElement('option');
+                opt.value = newAuth.trim();
+                opt.text = newAuth.trim();
+                // Add right above the "Add New" option
+                selectElt.add(opt, selectElt.options[selectElt.options.length - 1]);
+                selectElt.value = newAuth.trim();
+            } else {
+                // If cancelled, reset back to first index
+                selectElt.selectedIndex = 0;
+            }
+        }
+    }
+    async function handleAddHospital(selectElt) {
+        if (selectElt.value === 'ADD_NEW') {
+            const { value: newHospital } = await Swal.fire({
+                title: 'Add New Hospital / Location',
+                input: 'text',
+                inputPlaceholder: 'e.g., DHQ Hospital, Multan',
+                showCancelButton: true
+            });
+
+            if (newHospital && newHospital.trim()) {
+                const opt = document.createElement('option');
+                opt.value = newHospital.trim();
+                opt.text = newHospital.trim();
+                // Add right above the "Add New" option
+                selectElt.add(opt, selectElt.options[selectElt.options.length - 1]);
+                selectElt.value = newHospital.trim();
+            } else {
+                // If cancelled, reset back to first index
+                selectElt.selectedIndex = 0;
+            }
+        }
+    }
+</script>
+{% endblock %}

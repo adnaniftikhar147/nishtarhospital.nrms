@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Nishtar Hospital HRMS{% endblock %}</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Boxicons for standard scalable icons -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="/static/style.css">
+
+    <!-- SweetAlert2 for beautiful, interactive alerts/prompts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i class='bx bx-plus-medical'></i>
+                <span>NishtarHRMS</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="{{ url_for('dashboard') }}"
+                    class="nav-item {% if active_page == 'dashboard' %}active{% endif %}"><i
+                        class='bx bxs-dashboard'></i> Dashboard</a>
+
+                {% if active_page == 'profile' %}
+                <a href="#" class="nav-item active"><i class='bx bxs-user-detail'></i> Employee Profile</a>
+                {% endif %}
+
+                <a href="{{ url_for('find_staff') }}"
+                    class="nav-item {% if active_page == 'find_staff' %}active{% endif %}"><i class='bx bx-group'></i>
+                    Find Staff</a>
+                <a href="{{ url_for('department_list') }}"
+                    class="nav-item {% if active_page == 'department_list' %}active{% endif %}"><i
+                        class='bx bx-building'></i>
+                    Ward / Dept List</a>
+                <a href="{{ url_for('reports') }}"
+                    class="nav-item {% if active_page == 'reports' %}active{% endif %}"><i class='bx bxs-report'></i>
+                    Activity Reports</a>
+
+                <a href="{{ url_for('change_password') }}"
+                    class="nav-item {% if active_page == 'change_password' %}active{% endif %}"><i
+                        class='bx bxs-key'></i> Change Password</a>
+
+                <a href="{{ url_for('logout') }}" class="nav-item" style="color: #ef4444; margin-top: auto;"><i
+                        class='bx bx-log-out'></i> Secure Logout</a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <img src="https://ui-avatars.com/api/?name={{ current_user.username if current_user else 'Admin' | urlencode }}&background=0d84fb&color=fff"
+                        alt="Admin">
+                    <div>
+                        <p class="name">{{ current_user.username if current_user else 'Admin User' }}</p>
+                        <p class="role">{{ current_user.role if current_user else 'HR Manager' }}</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header section (Search/Notifications) -->
+            <header class="top-header">
+                <div class="breadcrumb">
+                    {% block breadcrumb %}Staff Management / <span class="highlight">Overview</span>{% endblock %}
+                </div>
+                <div class="header-actions">
+                    <button class="btn-primary" onclick="openAddEmployeeModal()"><i class='bx bx-user-plus'></i> Add
+                        Employee</button>
+                    <button class="btn-primary" style="background-color: var(--warning); color: #fff;"
+                        onclick='globalEditEmployee()'>
+                        <i class='bx bx-edit'></i> Edit Employee
+                    </button>
+                    <button class="btn-primary" style="background-color: var(--danger); color: #fff;"
+                        onclick="globalDeleteEmployee()">
+                        <i class='bx bx-trash'></i> Delete Employee
+                    </button>
+                    <div class="search-bar">
+                        <i class='bx bx-search'></i>
+                        <input type="text" id="globalSearchInput" placeholder="Quick Search (CNIC, File No, Name)"
+                            onkeypress="handleGlobalSearch(event)">
+                    </div>
+                    <button class="icon-btn" onclick="Swal.fire('Notifications', 'No new notifications.', 'info')"><i
+                            class='bx bx-bell'></i></button>
+                </div>
+            </header>
+
+            {% with messages = get_flashed_messages(category_filter=["success"]) %}
+            {% if messages %}
+            <div
+                style="margin: 16px 24px; padding: 12px 16px; background-color: #dcfce7; color: #16a34a; border: 1px solid #86efac; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 500;">
+                <i class='bx bxs-check-circle'></i> {{ messages[0] }}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            {% with messages = get_flashed_messages(category_filter=["error"]) %}
+            {% if messages %}
+            <div
+                style="margin: 16px 24px; padding: 12px 16px; background-color: #fef2f2; color: #ef4444; border: 1px solid #fca5a5; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 500;">
+                <i class='bx bxs-error-circle'></i> {{ messages[0] }}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Add Employee Modal (Global) -->
+    <div id="addEmployeeModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAddEmployeeModal()">&times;</span>
+            <h2 id="modalTitle">Add New Employee (BS-01 to BS-04)</h2>
+            <form id="addEmployeeForm" onsubmit="submitEmployee(event)">
+                <input type="hidden" id="empId" value="">
+                <h3 style="margin-bottom: 10px; font-size: 16px; color: var(--text-main);">Personal Information</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="empName">Full Name</label>
+                        <input type="text" id="empName" placeholder="Full Name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="empFather">Father's Name</label>
+                        <input type="text" id="empFather" placeholder="Father's Name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="empCnic">CNIC</label>
+                        <input type="text" id="empCnic" placeholder="xxxxx-xxxxxxx-x" required pattern="\d{5}-\d{7}-\d"
+                            title="e.g. 12345-1234567-1">
+                    </div>
+                    <div class="form-group">
+                        <label for="empDob">Date of Birth</label>
+                        <input type="date" id="empDob" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="empMobile">Mobile Number</label>
+                        <input type="text" id="empMobile" placeholder="03xx-xxxxxxx" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="empAddress">Residential Address</label>
+                        <input type="text" id="empAddress" placeholder="Full Address" required>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 20px; margin-bottom: 10px; font-size: 16px; color: var(--text-main);">Service
+                    Information</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="empFileNo">File Number</label>
+                        <input type="text" id="empFileNo" placeholder="e.g. NH-2023-WB" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="empDesignation">Designation</label>
+                        <input type="text" id="empDesignation" placeholder="e.g. Ward Boy" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="empBps">BPS Level (1-4)</label>
+                        <input type="number" id="empBps" placeholder="1 to 4" min="1" max="4" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="empJoinDate">Joining Date</label>
+                        <input type="date" id="empJoinDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="empContractExp">Contract Expiration</label>
+                        <input type="date" id="empContractExp" title="Leave empty if regularized">
+                    </div>
+                    <div class="form-group">
+                        <label for="empRegDate">Regularization Date</label>
+                        <input type="date" id="empRegDate" title="Leave empty if contract employee">
+                    </div>
+                    <div class="form-group">
+                        <label for="empDepartment">Ward / Department</label>
+                        <select id="empDepartment" required onchange="handleDepartmentChange(this)">
+                            <option value="" disabled selected>Select Department</option>
+                            {% for dept in global_departments %}
+                            <option value="{{ dept.name }}">{{ dept.name }}</option>
+                            {% endfor %}
+                            <option value="ADD_NEW" style="font-weight: 700; color: var(--primary);">+ Add New Ward /
+                                Department</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="empRetireDate">Date of Retirement</label>
+                        <input type="date" id="empRetireDate">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary"
+                    style="margin-top:20px; width: 100%; justify-content: center;">Save Employee Module</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Modal Handlers
+        function openAddEmployeeModal(empData = null) {
+            document.getElementById('addEmployeeModal').style.display = 'flex';
+            if (empData) {
+                document.getElementById('modalTitle').innerText = 'Edit Employee Information';
+                document.getElementById('empId').value = empData.id;
+                document.getElementById('empName').value = empData.name;
+                document.getElementById('empFather').value = empData.father_name;
+                document.getElementById('empCnic').value = empData.cnic;
+                document.getElementById('empDob').value = empData.dob;
+                document.getElementById('empMobile').value = empData.mobile_no;
+                document.getElementById('empAddress').value = empData.address;
+                document.getElementById('empFileNo').value = empData.file_no;
+                document.getElementById('empDesignation').value = empData.designation;
+                document.getElementById('empBps').value = empData.bps;
+                document.getElementById('empJoinDate').value = empData.joining_date;
+                document.getElementById('empContractExp').value = empData.contract_expiration_date || '';
+                document.getElementById('empRegDate').value = empData.regularization_date || '';
+                document.getElementById('empDepartment').value = empData.department || '';
+                document.getElementById('empRetireDate').value = empData.retirement_date || '';
+            } else {
+                document.getElementById('modalTitle').innerText = 'Add New Employee (BS-01 to BS-04)';
+                document.getElementById('empId').value = '';
+                document.getElementById('addEmployeeForm').reset();
+            }
+        }
+        function closeAddEmployeeModal() {
+            document.getElementById('addEmployeeModal').style.display = 'none';
+        }
+
+        async function submitEmployee(event) {
+            event.preventDefault();
+            const data = {
+                name: document.getElementById('empName').value,
+                father_name: document.getElementById('empFather').value,
+                cnic: document.getElementById('empCnic').value,
+                dob: document.getElementById('empDob').value,
+                mobile_no: document.getElementById('empMobile').value,
+                address: document.getElementById('empAddress').value,
+                file_no: document.getElementById('empFileNo').value,
+                designation: document.getElementById('empDesignation').value,
+                bps: document.getElementById('empBps').value,
+                joining_date: document.getElementById('empJoinDate').value,
+                contract_expiration_date: document.getElementById('empContractExp').value || null,
+                regularization_date: document.getElementById('empRegDate').value || null,
+                department: document.getElementById('empDepartment').value,
+                retirement_date: document.getElementById('empRetireDate').value || null,
+            };
+
+            const empId = document.getElementById('empId').value;
+            const url = empId ? `/api/employees/${empId}` : '/api/employees';
+            const method = empId ? 'PUT' : 'POST';
+
+            closeAddEmployeeModal();
+            Swal.fire({
+                title: 'Saving Database...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+
+                if (response.ok) {
+                    await Swal.fire('Success', result.message, 'success');
+                    window.location.href = `/employee/${result.id}`;
+                } else {
+                    Swal.fire('Error', result.error, 'error');
+                }
+            } catch (error) {
+                Swal.fire('Error', error.toString(), 'error');
+            }
+        }
+
+        async function deleteEmployee(id) {
+            const result = await Swal.fire({
+                title: 'Are you sure?',
+                text: "You won't be able to revert this! All service history will also be deleted.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Yes, delete it!'
+            });
+
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'Deleting...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                try {
+                    const response = await fetch(`/api/employees/${id}`, { method: 'DELETE' });
+                    const dat = await response.json();
+                    if (response.ok) {
+                        await Swal.fire('Deleted!', 'Employee has been deleted.', 'success');
+                        window.location.href = '/directory';
+                    } else {
+                        Swal.fire('Error', dat.error, 'error');
+                    }
+                } catch (error) {
+                    Swal.fire('Error', error.toString(), 'error');
+                }
+            }
+        }
+
+        async function handleGlobalSearch(event) {
+            if (event.key === 'Enter') {
+                const query = document.getElementById('globalSearchInput').value.trim();
+                if (!query) return;
+
+                try {
+                    Swal.fire({
+                        title: 'Searching Database...',
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+
+                    const response = await fetch(`/api/employees/search?q=${encodeURIComponent(query)}`);
+                    const data = await response.json();
+
+                    if (data.length > 0) {
+                        window.location.href = `/employee/${data[0].id}`;
+                    } else {
+                        Swal.fire('Not Found', `No employee matches '${query}'. Try searching for CNIC, Name, or File Number.`, 'info');
+                    }
+                } catch (error) {
+                    Swal.fire('Error', 'Look up failed. Try again.', 'error');
+                }
+            }
+        }
+        // Auto-format CNIC
+        document.getElementById('empCnic').addEventListener('input', function (e) {
+            let x = e.target.value.replace(/\D/g, '').match(/(\d{0,5})(\d{0,7})(\d{0,1})/);
+            e.target.value = !x[2] ? x[1] : x[1] + '-' + x[2] + (x[3] ? '-' + x[3] : '');
+        });
+
+        // Auto-format Mobile Number
+        document.getElementById('empMobile').addEventListener('input', function (e) {
+            let x = e.target.value.replace(/\D/g, '').match(/(\d{0,4})(\d{0,7})/);
+            e.target.value = !x[2] ? x[1] : x[1] + '-' + x[2];
+        });
+
+        async function globalEditEmployee() {
+            if (typeof openEditModal === 'function') {
+                openEditModal();
+            } else {
+                const { value: fileNo } = await Swal.fire({
+                    title: 'Edit Employee',
+                    input: 'text',
+                    inputLabel: 'Enter File No',
+                    inputPlaceholder: 'e.g. 102',
+                    showCancelButton: true,
+                    confirmButtonText: 'Find & Edit'
+                });
+                if (fileNo) {
+                    Swal.fire({ title: 'Searching Database...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                    try {
+                        const response = await fetch(`/api/employees/search?q=${encodeURIComponent(fileNo)}`);
+                        const data = await response.json();
+                        if (data.length > 0) {
+                            Swal.close();
+                            openAddEmployeeModal(data[0]);
+                        } else {
+                            Swal.fire('Not Found', 'No employee found matching your search.', 'info');
+                        }
+                    } catch (error) {
+                        Swal.fire('Error', 'Look up failed.', 'error');
+                    }
+                }
+            }
+        }
+
+        async function globalDeleteEmployee() {
+            const m = window.location.pathname.match(/\/employee\/(\d+)/);
+            if (m) {
+                deleteEmployee(m[1]);
+            } else {
+                const { value: fileNo } = await Swal.fire({
+                    title: 'Delete Employee',
+                    input: 'text',
+                    inputLabel: 'Enter File No',
+                    inputPlaceholder: 'e.g. 102',
+                    showCancelButton: true,
+                    confirmButtonText: 'Find & Delete'
+                });
+                if (fileNo) {
+                    Swal.fire({ title: 'Searching Database...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                    try {
+                        const response = await fetch(`/api/employees/search?q=${encodeURIComponent(fileNo)}`);
+                        const data = await response.json();
+                        if (data.length > 0) {
+                            Swal.close();
+                            deleteEmployee(data[0].id);
+                        } else {
+                            Swal.fire('Not Found', 'No employee found matching your search.', 'info');
+                        }
+                    } catch (error) {
+                        Swal.fire('Error', 'Look up failed.', 'error');
+                    }
+                }
+            }
+        }
+
+        async function handleDepartmentChange(selectElt) {
+            if (selectElt.value === 'ADD_NEW') {
+                const { value: newDept } = await Swal.fire({
+                    title: 'Add New Ward / Department',
+                    input: 'text',
+                    inputPlaceholder: 'e.g., Cardiology Ward',
+                    showCancelButton: true
+                });
+
+                if (newDept && newDept.trim()) {
+                    Swal.fire({ title: 'Saving...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                    try {
+                        const response = await fetch('/api/departments', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: newDept.trim() })
+                        });
+                        const result = await response.json();
+
+                        if (response.ok) {
+                            const opt = document.createElement('option');
+                            opt.value = result.name;
+                            opt.text = result.name;
+                            selectElt.add(opt, selectElt.options[selectElt.options.length - 1]);
+                            selectElt.value = result.name;
+                            Swal.close();
+                        } else {
+                            Swal.fire('Error', result.error, 'error');
+                            selectElt.value = "";
+                        }
+                    } catch (e) {
+                        Swal.fire('Error', 'Failed to add department.', 'error');
+                        selectElt.value = "";
+                    }
+                } else {
+                    selectElt.value = "";
+                }
+            }
+        }
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+
+</html>

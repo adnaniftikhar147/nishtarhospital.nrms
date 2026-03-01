@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard | Nishtar Hospital HRMS{% endblock %}
+
+{% block breadcrumb %}
+Staff Management / <span class="highlight">Dashboard Overview</span>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;">
+    <!-- Total Employees -->
+    <div class="card stat-card" style="display: flex; align-items: center; gap: 20px;">
+        <div class="icon-circle bg-info"
+            style="width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--primary-light); color: var(--primary); font-size: 28px;">
+            <i class='bx bx-group'></i>
+        </div>
+        <div>
+            <h3 style="color: var(--text-muted); font-size: 14px; font-weight: 500;">Total Staff (BS-01 to BS-04)</h3>
+            <p style="font-size: 32px; font-weight: 700; color: var(--text-main); margin-top: 4px;">{{ total_employees
+                }}</p>
+        </div>
+    </div>
+
+    <!-- Expiring Contracts -->
+    <div class="card stat-card" style="display: flex; align-items: center; gap: 20px;">
+        <div class="icon-circle bg-warning"
+            style="width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--warning-light); color: var(--warning); font-size: 28px;">
+            <i class='bx bx-time'></i>
+        </div>
+        <div>
+            <h3 style="color: var(--text-muted); font-size: 14px; font-weight: 500;">Expiring Contracts (Next 30 Days)
+            </h3>
+            <p style="font-size: 32px; font-weight: 700; color: var(--text-main); margin-top: 4px;">{{
+                expiring_contracts_count }}</p>
+        </div>
+    </div>
+
+    <!-- Upcoming Retirements -->
+    <div class="card stat-card" style="display: flex; align-items: center; gap: 20px;">
+        <div class="icon-circle bg-success"
+            style="width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--success-light); color: var(--success); font-size: 28px;">
+            <i class='bx bx-user-minus'></i>
+        </div>
+        <div>
+            <h3 style="color: var(--text-muted); font-size: 14px; font-weight: 500;">Upcoming Retirements (Next 6 Mo)
+            </h3>
+            <p style="font-size: 32px; font-weight: 700; color: var(--text-main); margin-top: 4px;">{{
+                upcoming_retirements_count }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-tables" style="display: grid; grid-template-columns: 1fr; gap: 24px; margin-top: 32px;">
+    <!-- Recent Activity Log -->
+    <div class="card">
+        <div class="card-header" style="margin-bottom: 20px;">
+            <h3 style="font-size: 18px; font-weight: 600;"><i class='bx bx-history' style="color: var(--primary);"></i>
+                Recent Administrative Actions</h3>
+        </div>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Action / Document</th>
+                        <th>Timestamp</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in recent_logs %}
+                    <tr>
+                        <td style="font-weight: 500;">
+                            <a href="{{ url_for('view_employee_profile', employee_id=log.employee.id) }}"
+                                style="text-decoration: none; color: var(--primary);">
+                                {{ log.employee.name }} ({{ log.employee.designation }})
+                            </a>
+                        </td>
+                        <td>
+                            <span class="status-badge"
+                                style="position: static; transform: none; display: inline-block;">{{ log.document_type
+                                }}</span>
+                        </td>
+                        <td>{{ log.generated_on.strftime('%b %d, %Y %I:%M %p') }}</td>
+                        <td><a href="{{ url_for('view_employee_profile', employee_id=log.employee.id) }}"
+                                class="btn-text">View Profile</a></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 20px; color: var(--text-muted);">No recent
+                            activities logged.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

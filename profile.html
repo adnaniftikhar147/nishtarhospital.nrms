@@ -1,0 +1,344 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ employee.name }} | Profile - Nishtar Hospital HRMS{% endblock %}
+
+{% block breadcrumb %}
+Staff Management / <span class="highlight">Employee Profile</span>
+{% endblock %}
+
+{% block content %}
+<div class="profile-layout">
+    <!-- Left Column: Identity & Service Info Cards -->
+    <div class="left-col">
+
+        <!-- Identity Card dynamically driven by Database values -->
+        <div class="card identity-card" style="text-align: left; padding: 24px; position: relative;">
+
+            <!-- Floating File No Select Dropdown in Left Corner -->
+            <div
+                style="position: absolute; top: 16px; left: 16px; background: var(--primary-light); color: var(--primary); padding: 4px 14px; border-radius: 6px; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px; box-shadow: var(--shadow-sm);">
+                <i class='bx bx-folder' style="font-size: 18px;"></i>
+                <label for="fileNoSelect"
+                    style="margin: 0; padding-right: 4px; display: flex; align-items: center;">File No:</label>
+                <select id="fileNoSelect" onchange="if(this.value) window.location.href='/employee/' + this.value;"
+                    style="background: transparent; border: none; color: var(--primary); font-weight: 700; font-family: inherit; font-size: 15px; cursor: pointer; outline: none; padding: 4px 0;">
+                    {% for emp in all_employees %}
+                    <option value="{{ emp.id }}" {% if emp.id==employee.id %}selected{% endif %}>{{ emp.file_no }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <span style="border-left: 1px solid var(--primary); opacity: 0.3; height: 14px; margin: 0 4px;"></span>
+                <input type="text" id="manualFileNo" placeholder="Find..." title="Type File No and press Enter"
+                    style="background: transparent; border: none; border-bottom: 1px dashed var(--primary); color: var(--primary); font-weight: 700; font-family: inherit; font-size: 14px; outline: none; width: 50px; padding: 0 2px;"
+                    onkeypress="if(event.key === 'Enter') { const val = this.value.trim().toLowerCase(); const opt = Array.from(document.getElementById('fileNoSelect').options).find(o => o.text.trim().toLowerCase() === val); if(opt) { window.location.href='/employee/'+opt.value; } else { Swal.fire('Not Found', 'This File No does not exist.', 'error'); } }">
+            </div>
+
+
+
+            <div style="display: flex; align-items: center; gap: 24px; margin-top: 40px;">
+                <div class="profile-header" style="margin-bottom: 0; position: relative;">
+                    <img src="{% if employee.profile_picture and employee.profile_picture != 'default-avatar.png' %}{{ url_for('static', filename='uploads/' + employee.profile_picture) }}{% else %}https://ui-avatars.com/api/?name={{ employee.name|urlencode }}&background=e0f2fe&color=0369a1&size=100{% endif %}"
+                        alt="{{ employee.name }}" class="profile-pic"
+                        style="width: 100px; height: 100px; object-fit: cover;">
+                    <label for="profileImageUpload"
+                        style="position: absolute; bottom: 0; right: 0; background: var(--primary); color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; justify-content: center; align-items: center; cursor: pointer; border: 2px solid var(--bg-card); transition: all 0.2s;"
+                        title="Upload Picture">
+                        <i class='bx bxs-camera'></i>
+                    </label>
+                    <input type="file" id="profileImageUpload" style="display: none;" accept="image/*"
+                        onchange="uploadProfilePicture(event)">
+                </div>
+
+                <div>
+                    <h2 class="employee-name" style="margin-bottom: 4px; font-size: 24px;">{{ employee.name }}</h2>
+                    <p class="designation" style="margin-bottom: 6px;">{{ employee.designation }} &bull; <span>BPS-{{
+                            '%02d' % employee.bps }}</span></p>
+                    <p
+                        style="color: var(--text-muted); font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 5px;">
+                        <i class='bx bx-building-house'></i>
+                        <select id="profileDepartment" onchange="updateProfileDepartment(this)"
+                            style="background: transparent; border: none; border-bottom: 1px dashed var(--text-muted); color: var(--text-muted); font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer; outline: none; padding: 2px 0; -webkit-appearance: none; -moz-appearance: none; appearance: none;">
+                            <option value="" disabled {% if not employee.department %}selected{% endif %}>Select Ward /
+                                Department</option>
+                            {% for dept in global_departments %}
+                            <option value="{{ dept.name }}" {% if employee.department==dept.name %}selected{% endif %}>
+                                {{ dept.name }}</option>
+                            {% endfor %}
+                            <option value="ADD_NEW" style="font-weight: 700; color: var(--primary);">+ Add New Ward /
+                                Department</option>
+                        </select>
+                    </p>
+                    <div style="margin-top: 10px;">
+                        <span
+                            class="status-badge {% if employee.regularization_date %}regular{% else %}contract{% endif %}"
+                            style="position: static; transform: none; display: inline-block;">
+                            {% if employee.regularization_date %}Regular{% else %}Contract{% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="divider">
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="info-group">
+                    <label>CNIC</label>
+                    <p style="font-size: 15px;">{{ employee.cnic }}</p>
+                </div>
+                <div class="info-group">
+                    <label>Father's Name</label>
+                    <p style="font-size: 15px;">{{ employee.father_name }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Personal & Contact Info -->
+        <div class="card details-card">
+            <h3>Personal Information</h3>
+            <ul class="details-list">
+                <li><i class='bx bx-calendar'></i> <span>DOB:</span> {{ employee.dob.strftime('%d %b %Y') if
+                    employee.dob else 'N/A' }}</li>
+                <li><i class='bx bx-mobile-alt'></i> <span>Mobile:</span> {{ employee.mobile_no }}</li>
+                <li><i class='bx bx-map'></i> <span>Address:</span> {{ employee.address }}</li>
+            </ul>
+        </div>
+
+        <!-- Service Info -->
+        <div class="card details-card">
+            <h3>Service Overview</h3>
+            <ul class="details-list">
+                <li><i class='bx bx-briefcase'></i> <span>Joined On:</span> {{ employee.joining_date.strftime('%d %b
+                    %Y') if employee.joining_date else 'N/A' }}</li>
+                <li><i class='bx bx-check-shield'></i> <span>Regularized:</span> {{
+                    employee.regularization_date.strftime('%d %b %Y') if employee.regularization_date else 'N/A' }}</li>
+                <li class="{% if not employee.contract_expiration_date %}muted{% endif %}">
+                    <i class='bx bx-time'></i> <span>Contract Expr:</span>
+                    {{ employee.contract_expiration_date.strftime('%d %b %Y') if employee.contract_expiration_date else
+                    'N/A' }}
+                </li>
+                <li class="{% if not employee.retirement_date %}muted{% endif %}">
+                    <i class='bx bx-log-out-circle'></i> <span>Retirement:</span>
+                    {{ employee.retirement_date.strftime('%d %b %Y') if employee.retirement_date else 'N/A' }}
+                </li>
+            </ul>
+        </div>
+
+    </div>
+
+    <!-- Right Column: Document Generator & Service History Log -->
+    <div class="right-col">
+
+        <!-- Document Generator Module -->
+        <div class="card doc-generator">
+            <div class="card-header">
+                <div>
+                    <h3><i class='bx bx-layer'></i> 1-Click Document Generator</h3>
+                    <p class="subtitle">Auto-fills forms with employee database details</p>
+                </div>
+            </div>
+
+            <div class="doc-grid">
+                <!-- Integrated JS Handlers for completely real functionality -->
+                <button class="doc-btn" onclick="generateDocument('Explanation Letter')"><i
+                        class='bx bx-message-rounded-error'></i> Explanation Letter</button>
+                <button class="doc-btn warning" onclick="generateDocument('Show Cause Notice')"><i
+                        class='bx bx-error-alt'></i> Show Cause Notice</button>
+                <button class="doc-btn info" onclick="generateDocument('Leave Application')"><i
+                        class='bx bx-notepad'></i> Leave Application</button>
+                <button class="doc-btn warning" onclick="generateDocument('Warning Letter')"><i
+                        class='bx bx-message-alt-error'></i> Warning Letter</button>
+                <button class="doc-btn success" onclick="generateDocument('NOC')"><i class='bx bx-check-circle'></i>
+                    Official NOC</button>
+                <button class="doc-btn default" onclick="generateDocument('Retirement Orders')"><i
+                        class='bx bx-user-minus'></i> Retirement Orders</button>
+            </div>
+        </div>
+
+        <!-- Service History Log driven by Database Iteration -->
+        <div class="card history-log">
+            <div class="card-header">
+                <h3><i class='bx bx-history'></i> Digital Service History</h3>
+            </div>
+
+            <div class="timeline" id="historyTimeline">
+                {% for log in history %}
+                <div class="timeline-item">
+                    <!-- Smart logic to output different colors based on Document Type context -->
+                    <div class="timeline-icon 
+                        {% if 'Warning' in log.document_type or 'Show Cause' in log.document_type %}bg-warning
+                        {% elif 'NOC' in log.document_type or 'Regularization' in log.document_type %}bg-success
+                        {% else %}bg-info{% endif %}">
+                        <i
+                            class='bx {{ "bx-message-alt-error" if "Warning" in log.document_type or "Show Cause" in log.document_type else "bx-check-shield" if "NOC" in log.document_type else "bx-notepad" }}'></i>
+                    </div>
+                    <div class="timeline-content">
+                        <h4 class="time-title">{{ log.document_type }} Generated</h4>
+                        <p class="time-desc">{{ log.document_content }}</p>
+                        <span class="time-date">{{ log.generated_on.strftime('%b %d, %Y - %I:%M %p') }}</span>
+                    </div>
+                </div>
+                {% else %}
+                <p style="color:var(--text-muted); font-size:14px; text-align:center;">No history recorded yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const currentEmployeeId = parseInt("{{ employee.id }}", 10);
+
+    // 1-Click Generation Function
+    async function generateDocument(docType) {
+        const userConfirmed = await Swal.fire({
+            title: 'Generate Document?',
+            text: `You are about to generate a ${docType} for {{ employee.name }}.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#0284c7', // Matches CSS --primary
+            cancelButtonColor: '#f43f5e',
+            confirmButtonText: 'Generate & Save'
+        });
+
+        if (userConfirmed.isConfirmed) {
+            Swal.fire({
+                title: 'Generating framework...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const response = await fetch(`/api/employees/${currentEmployeeId}/generate_document`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ document_type: docType })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    await Swal.fire({
+                        title: 'Success!',
+                        text: data.message,
+                        icon: 'success',
+                        confirmButtonColor: '#16a34a'
+                    });
+                    window.location.reload();
+                } else {
+                    throw new Error(data.error || 'Failed to generate');
+                }
+            } catch (error) {
+                Swal.fire('Error', error.toString(), 'error');
+            }
+        }
+    }
+
+    async function uploadProfilePicture(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('profile_image', file);
+
+        Swal.fire({
+            title: 'Uploading...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const response = await fetch(`/api/employees/${currentEmployeeId}/upload_picture`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+                await Swal.fire('Success!', 'Profile picture updated successfully.', 'success');
+                window.location.reload();
+            } else {
+                throw new Error(data.error || 'Failed to upload picture');
+            }
+        } catch (error) {
+            Swal.fire('Error', error.toString(), 'error');
+        }
+    }
+
+    function openEditModal() {
+        const empData = {{ employee.to_dict() | tojson | safe
+    }};
+    openAddEmployeeModal(empData);
+    }
+
+    async function updateProfileDepartment(selectElt) {
+        let newDepartment = selectElt.value;
+        const originalValue = "{{ employee.department if employee.department else '' }}";
+
+        if (newDepartment === 'ADD_NEW') {
+            const { value: newDept } = await Swal.fire({
+                title: 'Add New Ward / Department',
+                input: 'text',
+                inputPlaceholder: 'e.g., Cardiology Ward',
+                showCancelButton: true
+            });
+
+            if (newDept && newDept.trim()) {
+                Swal.fire({ title: 'Saving...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                try {
+                    const response = await fetch('/api/departments', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: newDept.trim() })
+                    });
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        const opt = document.createElement('option');
+                        opt.value = result.name;
+                        opt.text = result.name;
+                        selectElt.add(opt, selectElt.options[selectElt.options.length - 1]);
+                        selectElt.value = result.name;
+                        newDepartment = result.name;
+                    } else {
+                        Swal.fire('Error', result.error, 'error');
+                        selectElt.value = originalValue;
+                        return;
+                    }
+                } catch (e) {
+                    Swal.fire('Error', 'Failed to add department.', 'error');
+                    selectElt.value = originalValue;
+                    return;
+                }
+            } else {
+                selectElt.value = originalValue;
+                return;
+            }
+        }
+
+        Swal.fire({ title: 'Updating Department...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        try {
+            const response = await fetch('/api/employees/{{ employee.id }}', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ department: newDepartment })
+            });
+            const result = await response.json();
+            if (response.ok) {
+                Swal.fire('Success', 'Department updated successfully.', 'success');
+            } else {
+                Swal.fire('Error', result.error || 'Update failed', 'error');
+                selectElt.value = originalValue;
+            }
+        } catch (e) {
+            Swal.fire('Error', e.toString(), 'error');
+            selectElt.value = originalValue;
+        }
+    }
+
+</script>
+{% endblock %}

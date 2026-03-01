@@ -6,7 +6,11 @@ from werkzeug.utils import secure_filename
 from models import db, Employee, ServiceHistory, User, Department
 import traceback
 
-app = Flask(__name__)
+base_dir = os.path.dirname(os.path.abspath(__file__))
+app = Flask(__name__, 
+            template_folder=os.path.join(base_dir, 'templates'),
+            static_folder=os.path.join(base_dir, 'static'))
+
 startup_error = None
 
 @app.errorhandler(Exception)
