@@ -9,7 +9,8 @@ import traceback
 base_dir = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, 
             template_folder=base_dir,
-            static_folder=base_dir)
+            static_folder=base_dir,
+            static_url_path='/static')
 
 startup_error = None
 
