@@ -8,8 +8,8 @@ import traceback
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, 
-            template_folder=os.path.join(base_dir, 'templates'),
-            static_folder=os.path.join(base_dir, 'static'))
+            template_folder=base_dir,
+            static_folder=base_dir)
 
 startup_error = None
 
