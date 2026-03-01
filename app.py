@@ -6,14 +6,29 @@ from werkzeug.utils import secure_filename
 from models import db, Employee, ServiceHistory, User, Department
 
 app = Flask(__name__)
+startup_error = None
+
 # Configure SQLite DB for simplicity and portability
 app.secret_key = 'super_secret_hrms_key_123'
-if os.environ.get('VERCEL'):
+
+# Check if current directory is writable (Vercel is read-only)
+is_writable = False
+try:
+    with open('test_write.txt', 'w') as f:
+        f.write('test')
+    os.remove('test_write.txt')
+    is_writable = True
+except Exception:
+    is_writable = False
+
+if not is_writable:
+    # Use /tmp for read-only environments like Vercel Serverless
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/hrms.db'
     app.config['UPLOAD_FOLDER'] = '/tmp/uploads'
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///hrms.db'
     app.config['UPLOAD_FOLDER'] = 'static/uploads'
+    
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
@@ -61,17 +76,24 @@ def seed_data():
         admin_user.set_password('admin123')
         db.session.add(admin_user)
         db.session.commit()
-        
 
 
 # Create tables and seed data on startup
-with app.app_context():
-    db.create_all()
-    seed_data()
+try:
+    with app.app_context():
+        db.create_all()
+        seed_data()
+except Exception as e:
+    startup_error = str(e)
+    print("Database Startup Error:", startup_error)
 
 # --- Authentication Logic ---
 @app.before_request
 def require_login():
+    global startup_error
+    if startup_error:
+        return f"<h1>Internal Server Error (Startup)</h1><p>The app failed to start correctly. Error details below so you can share them:</p><pre>{startup_error}</pre>", 500
+        
     allowed_routes = ['login', 'register', 'forgot_password', 'api_request_otp', 'api_verify_otp', 'api_reset_password', 'static']
     if request.endpoint not in allowed_routes and 'user_id' not in session:
         return redirect(url_for('login'))
