@@ -4,9 +4,14 @@ from flask import Flask, jsonify, request, render_template, redirect, url_for, s
 from datetime import datetime, date, timedelta
 from werkzeug.utils import secure_filename
 from models import db, Employee, ServiceHistory, User, Department
+import traceback
 
 app = Flask(__name__)
 startup_error = None
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    return f"<h1>Internal Server Error (Caught by Handler)</h1><pre>{traceback.format_exc()}</pre>", 500
 
 # Configure SQLite DB for simplicity and portability
 app.secret_key = 'super_secret_hrms_key_123'
